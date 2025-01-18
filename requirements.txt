@@ -1,0 +1,5 @@
+pipecat-ai
+pipecat-ai[silero]
+pipecat-ai[openai]
+pipecat-ai[google]
+pipecat-ai[daily]
