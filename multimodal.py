@@ -1,9 +1,3 @@
-#
-# Copyright (c) 2024–2025, Daily
-#
-# SPDX-License-Identifier: BSD 2-Clause License
-#
-
 import asyncio
 import os
 import sys
@@ -21,7 +15,6 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.simli import SimliVideoService
-from pipecat.services.cartesia import CartesiaTTSService
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.gemini_multimodal_live.gemini import GeminiMultimodalLiveLLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
@@ -107,10 +100,6 @@ async def main():
         @transport.event_handler("on_first_participant_joined")
         async def on_first_participant_joined(transport, participant):
             # Enable both camera and screenshare. From the client side
-            # send just one.
-            # await transport.capture_participant_video(
-            #     participant["id"], framerate=1, video_source="camera"
-            # )
             await transport.capture_participant_video(
                 participant["id"], framerate=1, video_source="screenVideo"
             )
