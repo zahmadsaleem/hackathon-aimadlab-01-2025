@@ -12,12 +12,15 @@ import aiohttp
 from dotenv import load_dotenv
 from loguru import logger
 from runner import configure
+from simli import SimliConfig
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.services.simli import SimliVideoService
+from pipecat.services.cartesia import CartesiaTTSService
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.services.gemini_multimodal_live.gemini import GeminiMultimodalLiveLLMService
 from pipecat.transports.services.daily import DailyParams, DailyTransport
@@ -37,6 +40,9 @@ async def main():
             token,
             "Respond bot",
             DailyParams(
+                camera_out_enabled=True,
+                camera_out_width=512,
+                camera_out_height=512,
                 audio_in_sample_rate=16000,
                 audio_out_sample_rate=24000,
                 audio_out_enabled=True,
@@ -52,9 +58,13 @@ async def main():
             ),
         )
 
+        simli_ai = SimliVideoService(
+            SimliConfig(os.getenv("SIMLI_API_KEY"), os.getenv("SIMLI_FACE_ID"))
+        )
+
         llm = GeminiMultimodalLiveLLMService(
             api_key=os.getenv("GOOGLE_API_KEY"),
-            voice_id="Aoede",  # Puck, Charon, Kore, Fenrir, Aoede
+            voice_id="Puck",  # Puck, Charon, Kore, Fenrir, Aoede
             # system_instruction="Talk like a pirate."
             transcribe_user_audio=True,
             transcribe_model_audio=True,
@@ -62,13 +72,15 @@ async def main():
         )
 
         context = OpenAILLMContext(
-            [
-                {
-                    "role": "user",
-                    "content": "Say hello.",
-                },
-            ],
+               messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful LLM in a WebRTC call. Your goal is to demonstrate your capabilities in a succinct way. Your output will be converted to audio so don't include special characters in your answers. Respond to what the user said in a creative and helpful way.",
+            },
+        ]
         )
+
+
         context_aggregator = llm.create_context_aggregator(context)
 
         pipeline = Pipeline(
@@ -76,6 +88,7 @@ async def main():
                 transport.input(),
                 context_aggregator.user(),
                 llm,
+                simli_ai,
                 transport.output(),
                 context_aggregator.assistant(),
             ]
@@ -85,8 +98,8 @@ async def main():
             pipeline,
             PipelineParams(
                 allow_interruptions=True,
-                enable_metrics=True,
-                enable_usage_metrics=True,
+                enable_metrics=False,
+                enable_usage_metrics=False,
             ),
         )
 
@@ -94,9 +107,9 @@ async def main():
         async def on_first_participant_joined(transport, participant):
             # Enable both camera and screenshare. From the client side
             # send just one.
-            await transport.capture_participant_video(
-                participant["id"], framerate=1, video_source="camera"
-            )
+            # await transport.capture_participant_video(
+            #     participant["id"], framerate=1, video_source="camera"
+            # )
             await transport.capture_participant_video(
                 participant["id"], framerate=1, video_source="screenVideo"
             )
